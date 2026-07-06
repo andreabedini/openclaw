@@ -351,11 +351,11 @@ describe("resolveGatewayListenHosts", () => {
   it.each([
     {
       name: "non-loopback host passthrough",
-      host: "0.0.0.0",
+      host: "192.168.1.20",
       canBindToHost: async () => {
         throw new Error("should not be called");
       },
-      expected: ["0.0.0.0"],
+      expected: ["192.168.1.20"],
     },
     {
       name: "loopback with IPv6 available",
