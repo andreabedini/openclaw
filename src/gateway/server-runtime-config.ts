@@ -21,7 +21,7 @@ import { resolveHooksConfig } from "./hooks.js";
 import {
   defaultGatewayBindMode,
   isLoopbackHost,
-  isValidIPv4,
+  isValidIpAddress,
   resolveGatewayBindHost,
 } from "./net.js";
 import { mergeGatewayTailscaleConfig } from "./startup-auth.js";
@@ -78,9 +78,9 @@ export async function resolveGatewayRuntimeConfig(params: {
     if (!configuredCustomBindHost) {
       throw new Error("gateway.bind=custom requires gateway.customBindHost");
     }
-    if (!isValidIPv4(configuredCustomBindHost)) {
+    if (!isValidIpAddress(configuredCustomBindHost)) {
       throw new Error(
-        `gateway.bind=custom requires a valid IPv4 customBindHost (got ${configuredCustomBindHost})`,
+        `gateway.bind=custom requires a valid IP customBindHost (got ${configuredCustomBindHost})`,
       );
     }
     if (bindHost !== configuredCustomBindHost) {
@@ -149,7 +149,7 @@ export async function resolveGatewayRuntimeConfig(params: {
     throw new Error(formatUnsafeGatewayTailscaleNoAuthMessage(tailscaleMode));
   }
   if (tailscaleMode !== "off" && !isLoopbackHost(bindHost)) {
-    throw new Error("tailscale serve/funnel requires gateway bind=loopback (127.0.0.1)");
+    throw new Error("tailscale serve/funnel requires gateway bind=loopback (127.0.0.1 or ::1)");
   }
   if (!isLoopbackHost(bindHost) && !hasSharedSecret && authMode !== "trusted-proxy") {
     throw new Error(

@@ -1,4 +1,5 @@
 // Gateway bind URL helpers compute listener URLs from host and port settings.
+import net from "node:net";
 import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
 
 export type GatewayBindUrlResult =
@@ -20,11 +21,16 @@ export function resolveGatewayBindUrl(params: {
   pickTailnetHost: () => string | null;
   pickLanHost: () => string | null;
 }): GatewayBindUrlResult {
+  const formatHostForUrl = (host: string) =>
+    net.isIP(host) === 6 && !host.startsWith("[") ? `[${host}]` : host;
   const bind = params.bind ?? "loopback";
   if (bind === "custom") {
     const host = normalizeOptionalString(params.customBindHost);
     if (host) {
-      return { url: `${params.scheme}://${host}:${params.port}`, source: "gateway.bind=custom" };
+      return {
+        url: `${params.scheme}://${formatHostForUrl(host)}:${params.port}`,
+        source: "gateway.bind=custom",
+      };
     }
     return { error: "gateway.bind=custom requires gateway.customBindHost." };
   }
@@ -32,7 +38,10 @@ export function resolveGatewayBindUrl(params: {
   if (bind === "tailnet") {
     const host = params.pickTailnetHost();
     if (host) {
-      return { url: `${params.scheme}://${host}:${params.port}`, source: "gateway.bind=tailnet" };
+      return {
+        url: `${params.scheme}://${formatHostForUrl(host)}:${params.port}`,
+        source: "gateway.bind=tailnet",
+      };
     }
     return { error: "gateway.bind=tailnet set, but no tailnet IP was found." };
   }
@@ -40,7 +49,10 @@ export function resolveGatewayBindUrl(params: {
   if (bind === "lan") {
     const host = params.pickLanHost();
     if (host) {
-      return { url: `${params.scheme}://${host}:${params.port}`, source: "gateway.bind=lan" };
+      return {
+        url: `${params.scheme}://${formatHostForUrl(host)}:${params.port}`,
+        source: "gateway.bind=lan",
+      };
     }
     return { error: "gateway.bind=lan set, but no private LAN IP was found." };
   }

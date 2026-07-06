@@ -507,16 +507,15 @@ export type GatewayConfig = {
   mode?: "local" | "remote";
   /**
    * Bind address policy for the Gateway WebSocket + Control UI HTTP server.
-   * - auto: Loopback (127.0.0.1) if available, else 0.0.0.0 (fallback to all interfaces)
-   * - lan: 0.0.0.0 (all interfaces, no fallback, current BYOH path is IPv4-only)
-   * - loopback: 127.0.0.1 (local-only)
-   * - tailnet: Tailnet IPv4 if available (100.64.0.0/10), else loopback
-   * - custom: User-specified IPv4 address, fallback to 0.0.0.0 if unavailable (requires customBindHost)
-   * IPv6-only BYOH is not natively supported on this path today. Use an IPv4 sidecar or proxy.
+   * - auto: Loopback (127.0.0.1/::1) if available, else wildcard (0.0.0.0/::)
+   * - lan: Wildcard bind (0.0.0.0, with :: companion listener when available)
+   * - loopback: Loopback bind (127.0.0.1, with ::1 fallback/companion when available)
+   * - tailnet: Tailnet IPv4/IPv6 if available, else loopback
+   * - custom: User-specified IP address (IPv4 or IPv6), fallback to wildcard if unavailable (requires customBindHost)
    * Default: loopback (127.0.0.1).
    */
   bind?: GatewayBindMode;
-  /** Custom IPv4 address for bind="custom" mode. IPv6-only BYOH requires an IPv4 sidecar or proxy. */
+  /** Custom IP address (IPv4 or IPv6) for bind="custom" mode. */
   customBindHost?: string;
   controlUi?: GatewayControlUiConfig;
   terminal?: GatewayTerminalConfig;

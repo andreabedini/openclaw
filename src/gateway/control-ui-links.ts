@@ -1,4 +1,5 @@
 // Control UI link builder for local, LAN, tailnet, and custom gateway binds.
+import net from "node:net";
 import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
 import { resolveAdvertisedLanHost } from "../infra/advertised-lan-host.js";
 import {
@@ -6,7 +7,7 @@ import {
   pickBestEffortPrimaryLanIPv4,
 } from "../infra/network-discovery-display.js";
 import { normalizeControlUiBasePath } from "./control-ui-shared.js";
-import { isValidIPv4 } from "./net.js";
+import { isValidIpAddress } from "./net.js";
 
 type ControlUiLinkParams = {
   port: number;
@@ -18,37 +19,43 @@ type ControlUiLinkParams = {
 
 type ControlUiLinks = { httpUrl: string; wsUrl: string };
 
+function formatHostForUrl(host: string): string {
+  if (host.startsWith("[") && host.endsWith("]")) {
+    return host;
+  }
+  return net.isIP(host) === 6 ? `[${host}]` : host;
+}
+
 /** Resolve the advertised HTTP and websocket URLs for the Control UI. */
 export function resolveControlUiLinks(
   params: ControlUiLinkParams & { advertisedLanHost?: string | null },
 ): ControlUiLinks {
-  // Current BYOH truth: lan, tailnet, and custom bind resolve through IPv4-only helpers.
-  // IPv6-only hosts need an IPv4 sidecar or proxy in front of the Gateway.
   const port = params.port;
   const bind = params.bind ?? "loopback";
   const customBindHost = params.customBindHost?.trim();
   const advertisedLanHost = normalizeOptionalString(params.advertisedLanHost);
-  const { tailnetIPv4 } = inspectBestEffortPrimaryTailnetIPv4();
+  const { tailnetIPv4, tailnetIPv6 } = inspectBestEffortPrimaryTailnetIPv4();
   const host = (() => {
-    if (bind === "custom" && customBindHost && isValidIPv4(customBindHost)) {
+    if (bind === "custom" && customBindHost && isValidIpAddress(customBindHost)) {
       return customBindHost;
     }
-    if (bind === "tailnet" && tailnetIPv4) {
-      return tailnetIPv4 ?? "127.0.0.1";
+    if (bind === "tailnet") {
+      return tailnetIPv4 ?? tailnetIPv6 ?? "localhost";
     }
     if (bind === "lan") {
-      return advertisedLanHost ?? pickBestEffortPrimaryLanIPv4() ?? "127.0.0.1";
+      return advertisedLanHost ?? pickBestEffortPrimaryLanIPv4() ?? "localhost";
     }
-    return "127.0.0.1";
+    return "localhost";
   })();
+  const urlHost = formatHostForUrl(host);
   const basePath = normalizeControlUiBasePath(params.basePath);
   const uiPath = basePath ? `${basePath}/` : "/";
   const wsPath = basePath ? basePath : "";
   const httpScheme = params.tlsEnabled === true ? "https" : "http";
   const wsScheme = params.tlsEnabled === true ? "wss" : "ws";
   return {
-    httpUrl: `${httpScheme}://${host}:${port}${uiPath}`,
-    wsUrl: `${wsScheme}://${host}:${port}${wsPath}`,
+    httpUrl: `${httpScheme}://${urlHost}:${port}${uiPath}`,
+    wsUrl: `${wsScheme}://${urlHost}:${port}${wsPath}`,
   };
 }
 

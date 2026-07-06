@@ -34,7 +34,8 @@ openclaw gateway run   # equivalent, explicit form
     - Refuses to start unless `gateway.mode=local` is set in `~/.openclaw/openclaw.json`. Use `--allow-unconfigured` for ad-hoc/dev runs; it bypasses the guard without writing or repairing config.
     - `openclaw onboard --mode local` and `openclaw setup` write `gateway.mode=local`. If the config file exists but `gateway.mode` is missing, that is treated as damaged/clobbered config and the Gateway refuses to guess `local` for you — re-run onboarding, set the key manually, or pass `--allow-unconfigured`.
     - Binding beyond loopback without auth is blocked.
-    - `--bind` values `lan`, `tailnet`, and `custom` resolve over IPv4-only paths today; IPv6-only bring-your-own-host setups need an IPv4 sidecar or proxy in front of the Gateway.
+    - `--bind` works across IPv4-only, IPv6-only, and dual-stack hosts. `loopback`/`auto` prefer loopback and fall back to wildcard binds when required; `lan` and `tailnet` use the available address family.
+    - If startup fails with bind errors (`EADDRNOTAVAIL`, `EAFNOSUPPORT`) or the Control UI URL is unreachable, your host/network is likely misconfigured for the selected bind mode. Verify interface availability, firewall rules, and reverse-proxy address-family support.
     - `SIGUSR1` triggers an in-process restart when authorized. `commands.restart` (default: enabled) gates externally-sent `SIGUSR1`; set it to `false` to block manual OS-signal restarts while still allowing restart via the `gateway restart` command, the gateway tool, and config-apply/update.
     - `SIGINT`/`SIGTERM` stop the process but do not restore custom terminal state — if you wrap the CLI in a TUI or raw-mode input, restore the terminal yourself before exit.
 
@@ -100,7 +101,7 @@ openclaw gateway run   # equivalent, explicit form
 
 `--claude-cli-logs` is a deprecated alias for `--cli-backend-logs`.
 
-For `--bind custom`, set `gateway.customBindHost` to an IPv4 address; the Gateway falls back to `0.0.0.0` if that address is unavailable. IPv6-only bring-your-own-host setups need an IPv4 sidecar or proxy in front of the Gateway.
+For `--bind custom`, set `gateway.customBindHost` to a canonical IP address (IPv4 or IPv6). If that address is unavailable, the Gateway falls back to wildcard bind (`0.0.0.0` or `::`, depending on host support).
 
 ## Restart the Gateway
 

@@ -1,5 +1,5 @@
 // Configure wizard Gateway port, bind, auth, and Tailscale prompts.
-import { validateIPv4AddressInput } from "@openclaw/net-policy/ipv4";
+import { validateIpAddressInput } from "@openclaw/net-policy/ipv4";
 import {
   normalizeOptionalString,
   readStringValue,
@@ -85,7 +85,7 @@ export async function promptGatewayConfig(
         {
           value: "custom",
           label: "Custom IP",
-          hint: "Specify a specific IP address, with 0.0.0.0 fallback if unavailable",
+          hint: "Specify a specific IPv4/IPv6 address, with wildcard fallback if unavailable",
         },
       ],
     }),
@@ -96,9 +96,9 @@ export async function promptGatewayConfig(
   if (bind === "custom") {
     const input = guardCancel(
       await text({
-        message: "Custom IP address",
-        placeholder: "192.168.1.100",
-        validate: validateIPv4AddressInput,
+        message: "Custom IP address (IPv4 or IPv6)",
+        placeholder: "192.168.1.100 or ::1",
+        validate: validateIpAddressInput,
       }),
       runtime,
     );

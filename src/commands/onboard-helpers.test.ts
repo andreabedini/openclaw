@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
     killed: false,
   })),
   pickPrimaryTailnetIPv4: vi.fn<() => string | undefined>(() => undefined),
+  pickPrimaryTailnetIPv6: vi.fn<() => string | undefined>(() => undefined),
   resolveAdvertisedLanHost: vi.fn<() => Promise<string | null>>(async () => null),
   probeGateway: vi.fn(),
 }));
@@ -52,6 +53,7 @@ vi.mock("../process/exec.js", () => ({
 
 vi.mock("../infra/tailnet.js", () => ({
   pickPrimaryTailnetIPv4: mocks.pickPrimaryTailnetIPv4,
+  pickPrimaryTailnetIPv6: mocks.pickPrimaryTailnetIPv6,
 }));
 
 vi.mock("../infra/advertised-lan-host.js", () => ({
@@ -342,11 +344,10 @@ describe("resolveBrowserOpenCommand", () => {
 });
 
 describe("formatControlUiSshHint", () => {
-  it("includes the IPv4-only BYOH note and workaround", () => {
+  it("includes host configuration troubleshooting guidance", () => {
     const hint = formatControlUiSshHint({ port: 18789 });
-    expect(hint).toContain("BYOH note: lan, tailnet, and custom bind are currently IPv4-only.");
     expect(hint).toContain(
-      "If your host is IPv6-only, use an IPv4 sidecar or proxy in front of the Gateway.",
+      "Host configuration note: if the gateway is unreachable, verify your bind mode matches available host interfaces (IPv4/IPv6) and your firewall/proxy permits the selected address family.",
     );
   });
 });
@@ -513,8 +514,8 @@ describe("resolveControlUiLinks", () => {
       bind: "custom",
       customBindHost: "192.168.001.100",
     });
-    expect(links.httpUrl).toBe("http://127.0.0.1:18789/");
-    expect(links.wsUrl).toBe("ws://127.0.0.1:18789");
+    expect(links.httpUrl).toBe("http://localhost:18789/");
+    expect(links.wsUrl).toBe("ws://localhost:18789");
   });
 
   it("uses tailnet IP for tailnet bind", () => {
@@ -527,14 +528,24 @@ describe("resolveControlUiLinks", () => {
     expect(links.wsUrl).toBe("ws://100.64.0.9:18789");
   });
 
+  it("uses tailnet IPv6 when IPv4 is unavailable", () => {
+    mocks.pickPrimaryTailnetIPv6.mockReturnValueOnce("fd7a:115c:a1e0::9");
+    const links = resolveControlUiLinks({
+      port: 18789,
+      bind: "tailnet",
+    });
+    expect(links.httpUrl).toBe("http://[fd7a:115c:a1e0::9]:18789/");
+    expect(links.wsUrl).toBe("ws://[fd7a:115c:a1e0::9]:18789");
+  });
+
   it("keeps loopback for auto even when tailnet is present", () => {
     mocks.pickPrimaryTailnetIPv4.mockReturnValueOnce("100.64.0.9");
     const links = resolveControlUiLinks({
       port: 18789,
       bind: "auto",
     });
-    expect(links.httpUrl).toBe("http://127.0.0.1:18789/");
-    expect(links.wsUrl).toBe("ws://127.0.0.1:18789");
+    expect(links.httpUrl).toBe("http://localhost:18789/");
+    expect(links.wsUrl).toBe("ws://localhost:18789");
   });
 
   it("falls back to loopback for tailnet bind when interface discovery throws", () => {
@@ -547,8 +558,8 @@ describe("resolveControlUiLinks", () => {
       bind: "tailnet",
     });
 
-    expect(links.httpUrl).toBe("http://127.0.0.1:18789/");
-    expect(links.wsUrl).toBe("ws://127.0.0.1:18789");
+    expect(links.httpUrl).toBe("http://localhost:18789/");
+    expect(links.wsUrl).toBe("ws://localhost:18789");
   });
 
   it("falls back to loopback for LAN bind when interface discovery throws", () => {
@@ -561,8 +572,8 @@ describe("resolveControlUiLinks", () => {
       bind: "lan",
     });
 
-    expect(links.httpUrl).toBe("http://127.0.0.1:18789/");
-    expect(links.wsUrl).toBe("ws://127.0.0.1:18789");
+    expect(links.httpUrl).toBe("http://localhost:18789/");
+    expect(links.wsUrl).toBe("ws://localhost:18789");
   });
 
   it("uses route-aware advertised LAN host for display links", async () => {
@@ -583,8 +594,8 @@ describe("resolveControlUiLinks", () => {
       bind: "lan",
     });
 
-    expect(links.httpUrl).toBe("http://127.0.0.1:18789/");
-    expect(links.wsUrl).toBe("ws://127.0.0.1:18789");
+    expect(links.httpUrl).toBe("http://localhost:18789/");
+    expect(links.wsUrl).toBe("ws://localhost:18789");
     expect(mocks.resolveAdvertisedLanHost).not.toHaveBeenCalled();
   });
 });

@@ -108,7 +108,7 @@ describe("gateway tailscale bind validation", () => {
     expect(res.ok).toBe(true);
   });
 
-  it("rejects IPv6 custom bind host for tailscale serve/funnel", () => {
+  it("accepts IPv6 loopback custom bind host for tailscale serve/funnel", () => {
     const res = validateConfigObject({
       gateway: {
         bind: "custom",
@@ -116,10 +116,7 @@ describe("gateway tailscale bind validation", () => {
         tailscale: { mode: "serve" },
       },
     });
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      expect(res.issues.map((issue) => issue.path)).toContain("gateway.bind");
-    }
+    expect(res.ok).toBe(true);
   });
 
   it("rejects non-loopback bind when tailscale serve/funnel is enabled", () => {
@@ -135,7 +132,7 @@ describe("gateway tailscale bind validation", () => {
         {
           path: "gateway.bind",
           message:
-            'gateway.bind must resolve to loopback when gateway.tailscale.mode=serve (use gateway.bind="loopback" or gateway.bind="custom" with gateway.customBindHost="127.0.0.1")',
+            'gateway.bind must resolve to loopback when gateway.tailscale.mode=serve (use gateway.bind="loopback" or gateway.bind="custom" with gateway.customBindHost="127.0.0.1" or "::1")',
         },
       ]);
     }

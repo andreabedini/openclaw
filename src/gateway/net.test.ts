@@ -369,6 +369,24 @@ describe("resolveGatewayListenHosts", () => {
       canBindToHost: async () => false,
       expected: ["127.0.0.1"],
     },
+    {
+      name: "ipv6 loopback with IPv4 available",
+      host: "::1",
+      canBindToHost: async () => true,
+      expected: ["::1", "127.0.0.1"],
+    },
+    {
+      name: "lan wildcard with IPv6 available",
+      host: "0.0.0.0",
+      canBindToHost: async () => true,
+      expected: ["0.0.0.0", "::"],
+    },
+    {
+      name: "ipv6 wildcard with IPv4 available",
+      host: "::",
+      canBindToHost: async () => true,
+      expected: ["::", "0.0.0.0"],
+    },
   ] as const)("resolves listen hosts: $name", async ({ host, canBindToHost, expected }) => {
     vi.spyOn(process, "platform", "get").mockReturnValue("linux");
     const hosts = await resolveGatewayListenHosts(host, {
@@ -667,6 +685,10 @@ describe("resolveGatewayBindHost", () => {
 
   it("returns 0.0.0.0 for lan mode", async () => {
     expect(await resolveGatewayBindHost("lan")).toBe("0.0.0.0");
+  });
+
+  it("returns canonical IPv6 for custom mode when bindable", async () => {
+    expect(await resolveGatewayBindHost("custom", "[::1]")).toBe("::1");
   });
 
   it("returns 127.0.0.1 for auto mode on non-container host", async () => {

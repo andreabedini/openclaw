@@ -217,12 +217,11 @@ export function formatControlUiSshHint(params: {
   const sshTarget = resolveSshTargetHint();
   return [
     "No GUI detected. Open from your computer:",
-    `ssh -N -L ${params.port}:127.0.0.1:${params.port} ${sshTarget}`,
+    `ssh -N -L ${params.port}:localhost:${params.port} ${sshTarget}`,
     "Then open:",
     localUrl,
     authedUrl,
-    "BYOH note: lan, tailnet, and custom bind are currently IPv4-only.",
-    "If your host is IPv6-only, use an IPv4 sidecar or proxy in front of the Gateway.",
+    "Host configuration note: if the gateway is unreachable, verify your bind mode matches available host interfaces (IPv4/IPv6) and your firewall/proxy permits the selected address family.",
     "Docs:",
     "https://docs.openclaw.ai/gateway/remote",
     "https://docs.openclaw.ai/web/control-ui",

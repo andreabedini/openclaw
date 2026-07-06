@@ -150,6 +150,18 @@ describe("resolveGatewayRuntimeConfig", () => {
         expectedAuthMode: "none",
         expectedBindHost: "127.0.0.1",
       },
+      {
+        name: "custom IPv6 loopback bind with token",
+        cfg: {
+          gateway: {
+            bind: "custom" as const,
+            customBindHost: "::1",
+            auth: TOKEN_AUTH,
+          },
+        },
+        expectedAuthMode: "token",
+        expectedBindHost: "::1",
+      },
     ])("allows $name", async ({ cfg, expectedAuthMode, expectedBindHost }) => {
       const result = await resolveGatewayRuntimeConfig({ cfg, port: 18789 });
       expect(result.authMode).toBe(expectedAuthMode);
@@ -188,7 +200,7 @@ describe("resolveGatewayRuntimeConfig", () => {
             auth: TOKEN_AUTH,
           },
         },
-        expectedMessage: "gateway.bind=custom requires a valid IPv4 customBindHost",
+        expectedMessage: "gateway.bind=custom requires a valid IP customBindHost",
       },
       {
         name: "custom bind with mismatched resolved host",

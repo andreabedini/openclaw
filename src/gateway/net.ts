@@ -21,7 +21,7 @@ import {
   safeNetworkInterfaces,
   type NetworkInterfacesSnapshot,
 } from "../infra/network-interfaces.js";
-import { pickPrimaryTailnetIPv4 } from "../infra/tailnet.js";
+import { pickPrimaryTailnetIPv4, pickPrimaryTailnetIPv6 } from "../infra/tailnet.js";
 
 /** Pick the primary non-internal IPv4 address, preferring common LAN interface names. */
 export function pickPrimaryLanIPv4(): string | undefined {
@@ -241,11 +241,11 @@ export {
  * Resolves gateway bind host with fallback strategy.
  *
  * Modes:
- * - loopback: 127.0.0.1 (rarely fails, but handled gracefully)
- * - lan: always 0.0.0.0 (no fallback)
- * - tailnet: Tailnet IPv4 if available, else loopback
- * - auto: 0.0.0.0 inside containers (Docker/Podman/K8s); loopback otherwise
- * - custom: User-specified IP, fallback to 0.0.0.0 if unavailable
+ * - loopback: prefer 127.0.0.1, then ::1
+ * - lan: prefer 0.0.0.0, then ::
+ * - tailnet: Tailnet IPv4/IPv6 if available, else loopback
+ * - auto: wildcard inside containers (Docker/Podman/K8s); loopback otherwise
+ * - custom: user-specified IPv4/IPv6, wildcard fallback when unavailable
  *
  * @returns The bind address to use (never null)
  */
@@ -256,11 +256,7 @@ export async function resolveGatewayBindHost(
   const mode = bind ?? "loopback";
 
   if (mode === "loopback") {
-    // 127.0.0.1 rarely fails, but handle gracefully
-    if (await canBindToHost("127.0.0.1")) {
-      return "127.0.0.1";
-    }
-    return "0.0.0.0"; // extreme fallback
+    return await resolveLoopbackBindHost();
   }
 
   if (mode === "tailnet") {
@@ -268,41 +264,59 @@ export async function resolveGatewayBindHost(
     if (tailnetIP && (await canBindToHost(tailnetIP))) {
       return tailnetIP;
     }
-    if (await canBindToHost("127.0.0.1")) {
-      return "127.0.0.1";
+    const tailnetIPv6 = pickPrimaryTailnetIPv6();
+    if (tailnetIPv6 && (await canBindToHost(tailnetIPv6))) {
+      return tailnetIPv6;
     }
-    return "0.0.0.0";
+    return await resolveLoopbackBindHost();
   }
 
   if (mode === "lan") {
-    return "0.0.0.0";
+    return await resolveLanBindHost();
   }
 
   if (mode === "custom") {
-    const host = customHost?.trim();
+    const host = normalizeIp(customHost);
     if (!host) {
-      return "0.0.0.0";
-    } // invalid config → fall back to all
+      return await resolveLanBindHost();
+    }
 
-    if (isValidIPv4(host) && (await canBindToHost(host))) {
+    if (await canBindToHost(host)) {
       return host;
     }
     // Custom IP failed → fall back to LAN
-    return "0.0.0.0";
+    return await resolveLanBindHost();
   }
 
   if (mode === "auto") {
     // Inside a container, loopback is unreachable from the host network
     // namespace, so prefer 0.0.0.0 to make port-forwarding work.
     if (isContainerEnvironment()) {
-      return "0.0.0.0";
+      return await resolveLanBindHost();
     }
-    if (await canBindToHost("127.0.0.1")) {
-      return "127.0.0.1";
-    }
-    return "0.0.0.0";
+    return await resolveLoopbackBindHost();
   }
 
+  return await resolveLanBindHost();
+}
+
+async function resolveLoopbackBindHost(): Promise<string> {
+  if (await canBindToHost("127.0.0.1")) {
+    return "127.0.0.1";
+  }
+  if (await canBindToHost("::1")) {
+    return "::1";
+  }
+  return await resolveLanBindHost();
+}
+
+async function resolveLanBindHost(): Promise<string> {
+  if (await canBindToHost("0.0.0.0")) {
+    return "0.0.0.0";
+  }
+  if (await canBindToHost("::")) {
+    return "::";
+  }
   return "0.0.0.0";
 }
 
@@ -353,18 +367,23 @@ export async function resolveGatewayListenHosts(
   bindHost: string,
   opts?: { canBindToHost?: (host: string) => Promise<boolean> },
 ): Promise<string[]> {
-  if (bindHost !== "127.0.0.1") {
-    return [bindHost];
-  }
   // Windows: uv_tcp_bind6 creates a dual-stack socket (no UV_TCP_IPV6ONLY), which
-  // also accepts ::ffff:127.0.0.1 connections. Binding both ::1 and 127.0.0.1 on
-  // the same port causes non-deterministic TCP routing → HTTP requests hang silently.
+  // can make companion alias binds race each other and hang request routing.
   if (process.platform === "win32") {
     return [bindHost];
   }
   const canBind = opts?.canBindToHost ?? canBindToHost;
-  if (await canBind("::1")) {
-    return [bindHost, "::1"];
+  if (bindHost === "127.0.0.1") {
+    return (await canBind("::1")) ? [bindHost, "::1"] : [bindHost];
+  }
+  if (bindHost === "::1") {
+    return (await canBind("127.0.0.1")) ? [bindHost, "127.0.0.1"] : [bindHost];
+  }
+  if (bindHost === "0.0.0.0") {
+    return (await canBind("::")) ? [bindHost, "::"] : [bindHost];
+  }
+  if (bindHost === "::") {
+    return (await canBind("0.0.0.0")) ? [bindHost, "0.0.0.0"] : [bindHost];
   }
   return [bindHost];
 }
@@ -377,6 +396,10 @@ export async function resolveGatewayListenHosts(
  */
 export function isValidIPv4(host: string): boolean {
   return isCanonicalDottedDecimalIPv4(host);
+}
+
+export function isValidIpAddress(host: string): boolean {
+  return Boolean(normalizeIp(host));
 }
 
 /**

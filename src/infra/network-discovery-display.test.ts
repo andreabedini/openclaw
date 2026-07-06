@@ -36,6 +36,7 @@ describe("network display discovery", () => {
       }),
     ).toEqual({
       tailnetIPv4: undefined,
+      tailnetIPv6: undefined,
       warning: `Status could not inspect tailnet addresses: ${discoveryErrorMessage}.`,
     });
   });
@@ -64,6 +65,7 @@ describe("network display discovery", () => {
 
     expect(inspectBestEffortPrimaryTailnetIPv4()).toEqual({
       tailnetIPv4: "100.88.1.5",
+      tailnetIPv6: undefined,
     });
   });
 });

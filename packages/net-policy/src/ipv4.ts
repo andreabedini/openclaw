@@ -1,5 +1,5 @@
 // Network Policy module implements ipv4 behavior.
-import { isCanonicalDottedDecimalIPv4 } from "./ip.js";
+import { isCanonicalDottedDecimalIPv4, normalizeIpAddress } from "./ip.js";
 
 /** Validates the custom-bind IPv4 input and returns the user-facing error text. */
 export function validateDottedDecimalIPv4Input(value: string | undefined): string | undefined {
@@ -10,6 +10,17 @@ export function validateDottedDecimalIPv4Input(value: string | undefined): strin
     return undefined;
   }
   return "Invalid IPv4 address (e.g., 192.168.1.100)";
+}
+
+/** Validates canonical IPv4 or IPv6 custom-bind input and returns user-facing error text. */
+export function validateIpAddressInput(value: string | undefined): string | undefined {
+  if (!value) {
+    return "IP address is required for custom bind mode";
+  }
+  if (normalizeIpAddress(value)) {
+    return undefined;
+  }
+  return "Invalid IP address (e.g., 192.168.1.100 or ::1)";
 }
 
 /** @deprecated Use validateDottedDecimalIPv4Input. */

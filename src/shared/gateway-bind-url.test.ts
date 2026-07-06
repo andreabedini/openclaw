@@ -59,11 +59,11 @@ describe("shared/gateway-bind-url", () => {
         bind: "tailnet",
         scheme: "ws",
         port: 18789,
-        pickTailnetHost: () => "100.64.0.1",
+        pickTailnetHost: () => "fd7a:115c:a1e0::9",
         pickLanHost: vi.fn(),
       }),
     ).toEqual({
-      url: "ws://100.64.0.1:18789",
+      url: "ws://[fd7a:115c:a1e0::9]:18789",
       source: "gateway.bind=tailnet",
     });
     expect(
@@ -84,10 +84,10 @@ describe("shared/gateway-bind-url", () => {
         scheme: "wss",
         port: 8443,
         pickTailnetHost: vi.fn(),
-        pickLanHost: () => "192.168.1.2",
+        pickLanHost: () => "fe80::1234",
       }),
     ).toEqual({
-      url: "wss://192.168.1.2:8443",
+      url: "wss://[fe80::1234]:8443",
       source: "gateway.bind=lan",
     });
     expect(

@@ -1,5 +1,5 @@
 // Setup gateway config helpers build gateway config from onboarding answers.
-import { validateIPv4AddressInput } from "@openclaw/net-policy/ipv4";
+import { validateIpAddressInput } from "@openclaw/net-policy/ipv4";
 import { formatPortRangeHint } from "../cli/error-format.js";
 import { parsePort } from "../cli/shared/parse-port.js";
 import {
@@ -129,9 +129,9 @@ export async function configureGatewayForSetup(
     if (needsPrompt) {
       const input = await prompter.text({
         message: t("wizard.gateway.bindCustomIp"),
-        placeholder: "192.168.1.100",
+        placeholder: "192.168.1.100 or ::1",
         initialValue: customBindHost ?? "",
-        validate: validateIPv4AddressInput,
+        validate: validateIpAddressInput,
       });
       customBindHost = typeof input === "string" ? input.trim() : undefined;
     }

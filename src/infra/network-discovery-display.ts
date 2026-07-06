@@ -1,7 +1,7 @@
 // Formats network discovery details for startup and config output.
 import type { GatewayBindMode } from "../config/types.js";
 import { pickPrimaryLanIPv4, resolveGatewayBindHost } from "../gateway/net.js";
-import { pickPrimaryTailnetIPv4 } from "./tailnet.js";
+import { pickPrimaryTailnetIPv4, pickPrimaryTailnetIPv6 } from "./tailnet.js";
 
 // Display helpers are best-effort wrappers around network discovery. Startup
 // and config output should keep rendering even when interface probes fail.
@@ -37,14 +37,18 @@ export function pickBestEffortPrimaryLanIPv4(): string | undefined {
 /** Return a tailnet IPv4 plus an optional warning suitable for user output. */
 export function inspectBestEffortPrimaryTailnetIPv4(params?: { warningPrefix?: string }): {
   tailnetIPv4: string | undefined;
+  tailnetIPv6: string | undefined;
   warning?: string;
 } {
   try {
-    return { tailnetIPv4: pickPrimaryTailnetIPv4() };
+    return {
+      tailnetIPv4: pickPrimaryTailnetIPv4(),
+      tailnetIPv6: pickPrimaryTailnetIPv6(),
+    };
   } catch (error) {
     const prefix = params?.warningPrefix?.trim();
     const warning = prefix ? `${prefix}: ${summarizeDisplayNetworkError(error)}.` : undefined;
-    return { tailnetIPv4: undefined, ...(warning ? { warning } : {}) };
+    return { tailnetIPv4: undefined, tailnetIPv6: undefined, ...(warning ? { warning } : {}) };
   }
 }
 

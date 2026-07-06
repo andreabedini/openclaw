@@ -1,7 +1,7 @@
 // Validates normalized OpenClaw config and reports user-facing errors.
 import path from "node:path";
 import { collectConfiguredModelRefs } from "@openclaw/model-catalog-core/configured-model-refs";
-import { isCanonicalDottedDecimalIPv4, isLoopbackIpAddress } from "@openclaw/net-policy/ip";
+import { isLoopbackIpAddress } from "@openclaw/net-policy/ip";
 import { normalizeLowercaseStringOrEmpty } from "@openclaw/normalization-core/string-coerce";
 import { sanitizeForLog } from "../../packages/terminal-core/src/ansi.js";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
@@ -1004,11 +1004,7 @@ function validateGatewayTailscaleBind(config: OpenClawConfig): ConfigValidationI
     return [];
   }
   const customBindHost = config.gateway?.customBindHost;
-  if (
-    bindMode === "custom" &&
-    isCanonicalDottedDecimalIPv4(customBindHost) &&
-    isLoopbackIpAddress(customBindHost)
-  ) {
+  if (bindMode === "custom" && isLoopbackIpAddress(customBindHost)) {
     return [];
   }
   return [
@@ -1016,7 +1012,7 @@ function validateGatewayTailscaleBind(config: OpenClawConfig): ConfigValidationI
       path: "gateway.bind",
       message:
         `gateway.bind must resolve to loopback when gateway.tailscale.mode=${tailscaleMode} ` +
-        '(use gateway.bind="loopback" or gateway.bind="custom" with gateway.customBindHost="127.0.0.1")',
+        '(use gateway.bind="loopback" or gateway.bind="custom" with gateway.customBindHost="127.0.0.1" or "::1")',
     },
   ];
 }
